@@ -10,53 +10,31 @@ class ContactController extends Controller
     public function index()
     {
         $contacts = Contact::all();
-        return view('contacts.index', compact('contacts'));
-    }
-
-    public function create()
-    {
-        return view('contacts.create');
+        return response()->json($contacts);
     }
 
     public function store(Request $request)
     {
-        $request->validate([
-            'name' => 'required',
-            'email' => 'required|email',
-            'subject' => 'nullable',
-            'message' => 'required',
-        ]);
-
-        Contact::create($request->all());
-        return redirect()->route('contacts.index')->with('success', 'Contact created successfully.');
+        $contact = Contact::create($request->all());
+        return response()->json($contact, 201);
     }
 
-    public function show(Contact $contact)
+    public function show($id)
     {
-        return view('contacts.show', compact('contact'));
+        $contact = Contact::findOrFail($id);
+        return response()->json($contact);
     }
 
-    public function edit(Contact $contact)
+    public function update(Request $request, $id)
     {
-        return view('contacts.edit', compact('contact'));
-    }
-
-    public function update(Request $request, Contact $contact)
-    {
-        $request->validate([
-            'name' => 'required',
-            'email' => 'required|email',
-            'subject' => 'nullable',
-            'message' => 'required',
-        ]);
-
+        $contact = Contact::findOrFail($id);
         $contact->update($request->all());
-        return redirect()->route('contacts.index')->with('success', 'Contact updated successfully.');
+        return response()->json($contact);
     }
 
-    public function destroy(Contact $contact)
+    public function destroy($id)
     {
-        $contact->delete();
-        return redirect()->route('contacts.index')->with('success', 'Contact deleted successfully.');
+        Contact::findOrFail($id)->delete();
+        return response()->json(null, 204);
     }
 }

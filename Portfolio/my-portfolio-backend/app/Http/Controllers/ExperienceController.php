@@ -3,93 +3,153 @@
 namespace App\Http\Controllers;
 
 use App\Models\Experience;
+use App\Models\ExperienceSection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Facades\Validator;
 
 class ExperienceController extends Controller
 {
-    /**
-     * عرض قائمة السجلات.
-     */
-    public function index()
+    public function getExperienceSection()
     {
-        $experiences = Experience::all();
-        return view('experiences.index', compact('experiences'));
+        $section = ExperienceSection::first();
+        
+        if (!$section) {
+            $section = ExperienceSection::create([
+                'title' => 'My Experience',
+                'subtitle' => 'Professional journey and growth as a web developer',
+            ]);
+        }
+        
+        return response()->json($section);
     }
-
-    /**
-     * عرض نموذج إنشاء سجل جديد.
-     */
-    public function create()
+    
+    public function updateExperienceSection(Request $request)
     {
-        return view('experiences.create');
-    }
-
-    /**
-     * حفظ سجل جديد في قاعدة البيانات.
-     */
-    public function store(Request $request)
-    {
-        $request->validate([
-            'company' => 'required|string|max:255',
-            'position' => 'required|string|max:255',
-            'start_date' => 'required|string|max:255',
-            'end_date' => 'required|string|max:255',
-            'description' => 'required|string',
-            'skills' => 'required|json',
-            'logo' => 'nullable|string|max:255',
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:191',
+            'subtitle' => 'required|string|max:191',
         ]);
-
-        Experience::create($request->all());
-
-        return redirect()->route('experiences.index')
-                         ->with('success', 'Experience created successfully.');
+        
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+        
+        $section = ExperienceSection::first();
+        
+        if (!$section) {
+            $section = new ExperienceSection();
+        }
+        
+        $section->title = $request->title;
+        $section->subtitle = $request->subtitle;
+        $section->save();
+        
+        return response()->json($section);
     }
-
-    /**
-     * عرض سجل محدد.
-     */
-    public function show(Experience $experience)
+    
+    public function getExperiences()
     {
-        return view('experiences.show', compact('experience'));
+        $experiences = Experience::orderBy('start_date', 'desc')->get();
+        return response()->json($experiences);
     }
-
-    /**
-     * عرض نموذج تعديل سجل محدد.
-     */
-    public function edit(Experience $experience)
+    
+    public function getExperience($id)
     {
-        return view('experiences.edit', compact('experience'));
+        $experience = Experience::findOrFail($id);
+        return response()->json($experience);
     }
-
-    /**
-     * تحديث سجل محدد في قاعدة البيانات.
-     */
-    public function update(Request $request, Experience $experience)
+    
+    public function storeExperience(Request $request)
     {
-        $request->validate([
-            'company' => 'required|string|max:255',
-            'position' => 'required|string|max:255',
-            'start_date' => 'required|string|max:255',
-            'end_date' => 'required|string|max:255',
+        $validator = Validator::make($request->all(), [
+            'company' => 'required|string|max:191',
+            'position' => 'required|string|max:191',
+            'start_date' => 'required|string|max:191',
+            'end_date' => 'required|string|max:191',
             'description' => 'required|string',
-            'skills' => 'required|json',
-            'logo' => 'nullable|string|max:255',
+            'skills' => 'required|array',
+            'logo' => 'nullable|string',
         ]);
-
-        $experience->update($request->all());
-
-        return redirect()->route('experiences.index')
-                         ->with('success', 'Experience updated successfully.');
+        
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+        
+        $logoPath = null;
+        if ($request->logo && preg_match('/^data:image\/(\w+);base64,/', $request->logo)) {
+            $logoData = substr($request->logo, strpos($request->logo, ',') + 1);
+            $logoData = base64_decode($logoData);
+            $logoPath = 'experiences/' . time() . '.png';
+            Storage::disk('public')->put($logoPath, $logoData);
+            $logoPath = '/storage/' . $logoPath;
+        }
+        
+        $experience = Experience::create([
+            'company' => $request->company,
+            'position' => $request->position,
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
+            'description' => $request->description,
+            'skills' => json_encode($request->skills),
+            'logo' => $logoPath,
+        ]);
+        
+        return response()->json($experience, 201);
     }
-
-    /**
-     * حذف سجل محدد من قاعدة البيانات.
-     */
-    public function destroy(Experience $experience)
+    
+    public function updateExperience(Request $request, $id)
     {
+        $validator = Validator::make($request->all(), [
+            'company' => 'required|string|max:191',
+            'position' => 'required|string|max:191',
+            'start_date' => 'required|string|max:191',
+            'end_date' => 'required|string|max:191',
+            'description' => 'required|string',
+            'skills' => 'required|array',
+            'logo' => 'nullable|string',
+        ]);
+        
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+        
+        $experience = Experience::findOrFail($id);
+        
+        if ($request->logo && preg_match('/^data:image\/(\w+);base64,/', $request->logo)) {
+            if ($experience->logo && Storage::disk('public')->exists(str_replace('/storage/', '', $experience->logo))) {
+                Storage::disk('public')->delete(str_replace('/storage/', '', $experience->logo));
+            }
+            
+            $logoData = substr($request->logo, strpos($request->logo, ',') + 1);
+            $logoData = base64_decode($logoData);
+            $logoPath = 'experiences/' . time() . '.png';
+            Storage::disk('public')->put($logoPath, $logoData);
+            
+            $experience->logo = '/storage/' . $logoPath;
+        }
+        
+        $experience->company = $request->company;
+        $experience->position = $request->position;
+        $experience->start_date = $request->start_date;
+        $experience->end_date = $request->end_date;
+        $experience->description = $request->description;
+        $experience->skills = json_encode($request->skills);
+        $experience->save();
+        
+        return response()->json($experience);
+    }
+    
+    public function deleteExperience($id)
+    {
+        $experience = Experience::findOrFail($id);
+        
+        if ($experience->logo && Storage::disk('public')->exists(str_replace('/storage/', '', $experience->logo))) {
+            Storage::disk('public')->delete(str_replace('/storage/', '', $experience->logo));
+        }
+        
         $experience->delete();
-
-        return redirect()->route('experiences.index')
-                         ->with('success', 'Experience deleted successfully.');
+        
+        return response()->json(['message' => 'Experience deleted successfully']);
     }
 }

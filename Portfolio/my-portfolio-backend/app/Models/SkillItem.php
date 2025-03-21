@@ -1,25 +1,23 @@
 <?php
-
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class SkillItem extends Model
 {
-    use SoftDeletes;
+    use HasFactory;
 
+    protected $table = 'skill_items';
+    
     protected $fillable = [
         'skill_id',
         'name',
         'category',
         'image',
-        'description',
+        'description'
     ];
 
-    protected $dates = ['deleted_at'];
-
-    // العلاقة مع Skill
     public function skill()
     {
         return $this->belongsTo(Skill::class);

@@ -2,13 +2,18 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Hero extends Model
 {
-    use SoftDeletes;
-
+    use HasFactory;
+protected $table = 'hero'; 
+    /**
+     * The attributes that are mass assignable.
+     *
+     * @var array
+     */
     protected $fillable = [
         'name',
         'title',
@@ -18,5 +23,23 @@ class Hero extends Model
         'profile_image',
     ];
 
-    protected $dates = ['deleted_at'];
+    /**
+     * The attributes that should be cast.
+     *
+     * @var array
+     */
+    protected $casts = [
+        'experience_months' => 'integer',
+    ];
+
+    /**
+     * Get the tech stack as an array.
+     *
+     * @param  string  $value
+     * @return array
+     */
+    public function getTechStackAttribute($value)
+    {
+        return json_decode($value, true) ?: [];
+    }
 }

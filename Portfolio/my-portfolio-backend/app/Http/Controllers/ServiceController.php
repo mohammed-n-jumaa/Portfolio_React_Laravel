@@ -3,87 +3,111 @@
 namespace App\Http\Controllers;
 
 use App\Models\Service;
+use App\Models\ServiceSection;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Validator;
 
 class ServiceController extends Controller
 {
-    /**
-     * عرض قائمة السجلات.
-     */
-    public function index()
+    public function getServiceSection()
+    {
+        $serviceSection = ServiceSection::first();
+        $services = Service::all();
+
+        return response()->json([
+            'section' => $serviceSection,
+            'services' => $services
+        ]);
+    }
+
+    public function updateServiceSection(Request $request)
+    {
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:191',
+            'subtitle' => 'required|string|max:191',
+            'info_text' => 'required|string',
+        ]);
+
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
+
+        $serviceSection = ServiceSection::first();
+        if (!$serviceSection) {
+            $serviceSection = new ServiceSection();
+        }
+
+        $serviceSection->title = $request->title;
+        $serviceSection->subtitle = $request->subtitle;
+        $serviceSection->info_text = $request->info_text;
+        $serviceSection->save();
+
+        return response()->json(['message' => 'Service section updated successfully', 'section' => $serviceSection]);
+    }
+
+    public function getServices()
     {
         $services = Service::all();
-        return view('services.index', compact('services'));
+        return response()->json($services);
     }
 
-    /**
-     * عرض نموذج إنشاء سجل جديد.
-     */
-    public function create()
+    public function getService($id)
     {
-        return view('services.create');
+        $service = Service::findOrFail($id);
+        return response()->json($service);
     }
 
-    /**
-     * حفظ سجل جديد في قاعدة البيانات.
-     */
-    public function store(Request $request)
+    public function storeService(Request $request)
     {
-        $request->validate([
-            'title' => 'required|string|max:255',
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:191',
             'description' => 'required|string',
-            'icon' => 'required|string|max:255',
-            'technologies' => 'required|json',
+            'icon' => 'required|string|max:191',
+            'technologies' => 'required|array',
         ]);
 
-        Service::create($request->all());
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
 
-        return redirect()->route('services.index')
-                         ->with('success', 'Service created successfully.');
+        $service = new Service();
+        $service->title = $request->title;
+        $service->description = $request->description;
+        $service->icon = $request->icon;
+        $service->technologies = json_encode($request->technologies);
+        $service->save();
+
+        return response()->json(['message' => 'Service created successfully', 'service' => $service], 201);
     }
 
-    /**
-     * عرض سجل محدد.
-     */
-    public function show(Service $service)
+    public function updateService(Request $request, $id)
     {
-        return view('services.show', compact('service'));
-    }
-
-    /**
-     * عرض نموذج تعديل سجل محدد.
-     */
-    public function edit(Service $service)
-    {
-        return view('services.edit', compact('service'));
-    }
-
-    /**
-     * تحديث سجل محدد في قاعدة البيانات.
-     */
-    public function update(Request $request, Service $service)
-    {
-        $request->validate([
-            'title' => 'required|string|max:255',
+        $validator = Validator::make($request->all(), [
+            'title' => 'required|string|max:191',
             'description' => 'required|string',
-            'icon' => 'required|string|max:255',
-            'technologies' => 'required|json',
+            'icon' => 'required|string|max:191',
+            'technologies' => 'required|array',
         ]);
 
-        $service->update($request->all());
+        if ($validator->fails()) {
+            return response()->json(['errors' => $validator->errors()], 422);
+        }
 
-        return redirect()->route('services.index')
-                         ->with('success', 'Service updated successfully.');
+        $service = Service::findOrFail($id);
+        $service->title = $request->title;
+        $service->description = $request->description;
+        $service->icon = $request->icon;
+        $service->technologies = json_encode($request->technologies);
+        $service->save();
+
+        return response()->json(['message' => 'Service updated successfully', 'service' => $service]);
     }
 
-    /**
-     * حذف سجل محدد من قاعدة البيانات.
-     */
-    public function destroy(Service $service)
+    public function deleteService($id)
     {
+        $service = Service::findOrFail($id);
         $service->delete();
 
-        return redirect()->route('services.index')
-                         ->with('success', 'Service deleted successfully.');
+        return response()->json(['message' => 'Service deleted successfully']);
     }
 }
